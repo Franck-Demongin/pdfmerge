@@ -38,7 +38,7 @@ pub fn run() {
     let state = Arc::new(Mutex::new(Vec::<SourceState>::new()));
     let output_state = Arc::new(Mutex::new(OutputState {
         dir: String::new(),
-        name: output::default_output_name(),
+        name: "fusion".to_owned(),
         dir_modified: false,
         name_modified: false,
     }));
@@ -174,15 +174,19 @@ pub fn run() {
     let output_dir_state = Arc::clone(&output_state);
     let merge_can_merge_output_dir = Arc::clone(&state);
     app.on_output_dir_changed(move |value| {
+        let typed = value.to_string();
         if let Some(app) = weak_output_dir.upgrade() {
             let mut guard = output_dir_state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            guard.dir = value.to_string();
+            guard.dir = typed.clone();
             guard.dir_modified = true;
-            let can_merge = compute_can_merge(&merge_can_merge_output_dir, &output_dir_state);
             drop(guard);
-            app.set_can_merge(can_merge);
+            app.set_output_dir_str(slint::SharedString::from(typed.as_str()));
+            app.set_can_merge(compute_can_merge(
+                &merge_can_merge_output_dir,
+                &output_dir_state,
+            ));
         }
     });
 
@@ -190,15 +194,19 @@ pub fn run() {
     let output_name_state = Arc::clone(&output_state);
     let merge_can_merge_output_name = Arc::clone(&state);
     app.on_output_name_changed(move |value| {
+        let typed = value.to_string();
         if let Some(app) = weak_output_name.upgrade() {
             let mut guard = output_name_state
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            guard.name = value.to_string();
+            guard.name = typed.clone();
             guard.name_modified = true;
-            let can_merge = compute_can_merge(&merge_can_merge_output_name, &output_name_state);
             drop(guard);
-            app.set_can_merge(can_merge);
+            app.set_output_name_str(slint::SharedString::from(typed.as_str()));
+            app.set_can_merge(compute_can_merge(
+                &merge_can_merge_output_name,
+                &output_name_state,
+            ));
         }
     });
 
@@ -234,6 +242,7 @@ pub fn run() {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let output_dir = output_guard.dir.clone();
         let output_name = output_guard.name.clone();
+        let output_name_modified = output_guard.name_modified;
         drop(output_guard);
 
         let first = &snapshot[0].path;
@@ -242,10 +251,19 @@ pub fn run() {
         } else {
             Some(PathBuf::from(output_dir))
         };
-        let output_path = if output_name.trim().is_empty() && output_dir.is_none() {
+        let requested_output_name = if output_name_modified && !output_name.trim().is_empty() {
+            Some(output_name)
+        } else {
+            None
+        };
+        let output_path = if requested_output_name.is_none() && output_dir.is_none() {
             output::default_output_path(first, None)
         } else {
-            output::resolve_output_path(first, output_dir.as_deref(), Some(&output_name))
+            output::resolve_output_path(
+                first,
+                output_dir.as_deref(),
+                requested_output_name.as_deref(),
+            )
         };
 
         let mut request_sources = Vec::new();
@@ -407,7 +425,7 @@ fn enqueue_sources(
                                 .to_string();
                         }
                         if !output.name_modified {
-                            output.name = output::default_output_name();
+                            output.name = "fusion".to_owned();
                         }
                         drop(output);
                     }
@@ -557,10 +575,12 @@ fn compute_can_merge(
         return false;
     }
     drop(lock);
-    let output = output_state
+    // Les champs de sortie sont activés par défaut : un répertoire peut rester vide
+    // et être complété par le défaut, tandis que le nom "fusion" n'est jamais bloquant.
+    let _output = output_state
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    !output.dir.trim().is_empty() && !output.name.trim().is_empty()
+    true
 }
 
 fn rebuild_ui(

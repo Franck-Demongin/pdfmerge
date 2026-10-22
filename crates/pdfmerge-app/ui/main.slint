@@ -52,11 +52,11 @@ export component AppWindow inherits Window {
 
         HorizontalBox {
             Text { text: "Dossier de sortie"; width: 180px; }
-            LineEdit { text <=> root.output_dir_str; horizontal-stretch: 1; edited => root.output_dir_changed(self.text); }
+            LineEdit { text: root.output_dir_str; horizontal-stretch: 1; edited => root.output_dir_changed(self.text); }
         }
         HorizontalBox {
             Text { text: "Nom du fichier"; width: 180px; }
-            LineEdit { text <=> root.output_name_str; horizontal-stretch: 1; edited => root.output_name_changed(self.text); }
+            LineEdit { text: root.output_name_str; horizontal-stretch: 1; edited => root.output_name_changed(self.text); }
         }
 
         HorizontalBox {
