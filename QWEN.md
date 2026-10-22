@@ -14,11 +14,15 @@ Le cahier des charges détaillé est dans `doc/cahier-des-charges-pdfmerge.md` (
 
 ## État actuel du dépôt
 
-Squelette **non implémenté** à ce jour : les deux crates compilent mais ne contiennent que du code template.
-- `crates/pdfmerge-core/src/lib.rs` : fonction `add` générique + test unique.
-- `crates/pdfmerge-app/src/main.rs` : `println!("Hello, world!")`.
+Implémentation fonctionnelle livrée en phase cœur puis app :
 
-La structure de production prévue (`page_spec.rs`, `sources.rs`, `merge.rs`, `output.rs`, `error.rs`, `cli.rs`, `gui.rs`, `build.rs`, `ui/main.slint`) n'existe pas encore. À développer selon les §6.1 et §10 du cahier des charges, **en commençant par `pdfmerge-core`** (d'abord `page_spec` avec tests exhaustifs).
+- `pdfmerge-core` expose `PageSpec`, `sources`, `output`, `merge` et les types de requête/rapport.
+- `pdfmerge-app` fournit un binaire unique avec aiguillage GUI/CLI.
+- `crates/pdfmerge-core/tests/merge.rs` couvre la fusion (ordre, dimensions, rotation, attributs hérités, doublons, absence de sources, écrasement refusé).
+- `crates/pdfmerge-app/tests/cli.rs` couvre le comportement CLI (aide, codes de sortie, sélection invalide, sources manquantes, ordre, expansion de dossier, simulation, protections d'écrasement).
+- GUI Slint implémentée : ajout de fichiers/dossiers, réorganisation, validation des sélections, dossier/fichier de sortie, progression et fusion dans un thread séparé.
+
+Le fichier historique de contexte a été mis à jour pour refléter cette implémentation.
 
 ## Structure du projet
 
@@ -27,9 +31,20 @@ pdfmerge/
 ├── Cargo.toml                      # workspace virtuel (resolver = "3")
 ├── crates/
 │   ├── pdfmerge-core/              # moteur métier, sans dépendance UI
-│   │   └── src/lib.rs              # (stub actuel)
-│   └── pdfmerge-app/               # binaire unique CLI+GUI
-│       └── src/main.rs             # (stub actuel)
+│   │   └── src/
+│   │       ├── lib.rs              # API publique
+│   │       ├── page_spec.rs        # parseur + résolution de sélection
+│   │       ├── sources.rs          # fichiers/dossiers, tri naturel
+│   │       ├── merge.rs            # fusion lopdf + attributs hérités
+│   │       ├── output.rs           # sortie par défaut, extension, validation
+│   │       └── error.rs            # SpecError/MergeError/SourceError
+│   └── pdfmerge-app/               # binaire unique CLI + GUI
+│       ├── build.rs                # compilation Slint
+│       ├── ui/main.slint           # fenêtre principale
+│       └── src/
+│           ├── main.rs             # slint::include_modules! et aiguillage
+│           ├── cli.rs              # clap derive, expansion et fusion
+│           └── gui.rs              # callbacks Slint et thread de fusion
 ├── doc/
 │   └── cahier-des-charges-pdfmerge.md   # spécification fonctionnelle complète
 ├── Cargo.lock
@@ -42,6 +57,7 @@ pdfmerge/
 - `resolver = "3"`.
 - Les dépendances sont **centralisées** dans `[workspace.dependencies]` de la racine ; chaque crate les référence via `dep.workspace = true` (et `version.workspace`, `edition.workspace`, etc.).
 - Lints workspace : `unsafe_code = "forbid"` ; clippy `unwrap_used`/`expect_used = "warn"`.
+- L'app autorise ces lints dans `main.rs` parce que `slint::include_modules!()` étend du code généré.
 - Profil release : `lto = true`, `codegen-units = 1`, `strip = true`.
 
 Dépendances centrales disponibles (pas de les redéclarer en dur sauf besoin) : `lopdf 0.36`, `thiserror 2`, `anyhow 1`, `natord 1`, `chrono 0.4 (clock)`, `clap 4 (derive)`, `slint 1`, `slint-build 1`, `rfd 0.15`, `tempfile 3`, `proptest 1`, `assert_cmd 2`.
@@ -53,51 +69,48 @@ Dépendances centrales disponibles (pas de les redéclarer en dur sauf besoin) :
 cargo build
 cargo build --release
 
-# Tests (core + app)
+# Tests
 cargo test
 cargo test -p pdfmerge-core
+cargo test -p pdfmerge-app --test cli
 cargo test -- --nocapture   # pour les sorties
 
 # Lints / format requis par le critère d'acceptation n°9
 cargo fmt --check
 cargo clippy -- -D warnings
 
-# Lancement (stub actuel)
-cargo run -p pdfmerge-app              # sans args → GUI prévue
-cargo run -p pdfmerge-app -- --help   # CLI (une fois implémentée)
+# Lancement
+cargo run -p pdfmerge-app              # sans args → GUI
+cargo run -p pdfmerge-app -- --help    # CLI
 ```
 
-Notes machine : `~/.cargo/bin` **n'est pas dans `PATH`** (voir mémoires). Les binaires installés via `cargo install` nécessitent soit l'export `PATH`, soit un lien symbolique vers `~/.local/bin`. Environnement de dev : Ubuntu 26.04, toolchain Rust stable 1.99 (1.89+ OK). Pas de `gh` CLI disponible.
+Notes machine : `~/.cargo/bin` **n'est pas dans `PATH`**. Environnement de développement testé sur Ubuntu 26.04, toolchain Rust stable. Pas de `gh` CLI disponible.
 
 ## Conventions de développement
 
 - Avant tout code notable, lire `doc/cahier-des-charges-pdfmerge.md` (spécification validée, à appliquer telle quelle).
-- Conventions Rust : édition 2024, `rust-version = "1.85"` ; atomic commits clairs.
-- Pas de `unwrap()`/`expect()` sur des données externes ; erreurs typées côté bibliothèque (`thiserror`) + `anyhow` dans les binaires.
-- `unsafe_code = "forbid"`.
-- Lints clippy traitent `unwrap_used`/`expect_used` comme warnings ; le cas `-- -D warnings` doit passer avant livraison.
-- Pas d'introduction de dépendance non listée sans justification (§10.5).
-- Le parseur de sélection et la résolution sont des **fonctions pures**, faciles à tester unitairement + `proptest`.
+- Conventions Rust : édition 2024, `rust-version = "1.85"` ; commits `git` clairs.
+- Pas de `unwrap()`/`expect()` sur des données externes dans le code applicatif ; erreurs typées côté bibliothèque (`thiserror`) + `anyhow` dans les binaires.
+- `unsafe_code = "forbid"` ; l'app repasse à `allow` uniquement pour le code généré par `include_modules!`, sans introduire d'`unsafe`.
+- Le parseur de sélection et la résolution sont des **fonctions pures**, testées unitairement et avec `proptest`.
 - Messages Git et sujets de commit en **anglais**, style Conventional Commits (`feat:`, `fix:`, …).
-- Commencer par `pdfmerge-core` (`page_spec` d'abord) puis `merge`, puis CLI, puis GUI (§10).
 - Petites étapes compilables, chaque commit clair.
 - Distinction CLI/GUI : un seul binaire. Sous Windows, `windows_subsystem = "windows"` masque la console ; prévoir `AttachConsole` en mode CLI ou deux binaires.
 
 ## Résumé des exigences clés (voir cahier des charges pour détails)
 
-- **Syntaxe de sélection** (`page_spec`) : grammaire `item`/`plage`/`page` ; espaces ignorés ; crochets englobants tolérés ; `$` = dernière page. Plages ascendantes et **descendantes** (`b-a` donne b..a) volontaires. Numéros hors limites = erreur. Vide = toutes les pages. Messages d'erreur avec position. Tests + `proptest` (toute page dans `[1,n]`).
-- **Sources** : répertoire non récursif, extension `.pdf` insensible, tri alphabétique naturel (`natord`). Même fichier plusieurs fois avec sélections différentes. Police→tri.
-- **Sortie** : dossier par défaut = dossier de la 1re source ; nom par défaut `fusion_AAAAMMJJ-HHMMSS.pdf` (heure locale) ; horodatage à lancement de la fusion ; `.pdf` ajouté si absent ; refus si la sortie écraserait une source (comparaison canonique) ; écrasement autre fichier → confirmation GUI / erreur CLI sauf `--force`.
-- **Orientation** : conservation de `MediaBox`/`CropBox`/`Resources`/**`Rotate`** (hérités des parents → résoudre et copier sur chaque page). `Rotate` hérité = point critique.
-- **Fusion** : renumérotation des objets pour éviter collisions ; matériauser attributs hérités ; pages dupliquées = cloner le dict de page mais partager contenu/ressources ; écriture atomique via fichier temporaire puis rename.
-- **CLI** : clap derive, `pdfmerge pdf.pdf[3-6,1,4-$]` (dernier `[…]` final), options `-o/-d/-n/-f/--dry-run/-q/-v/--gui`. Codes de sortie 0–4. Mutuellement exclusifs `--output` et `--output-dir/--name`.
-- **GUI** : Slint, `rfd` pour dialogues, thread séparé + `invoke_from_event_loop`, validation à la frappe, français (`@tr()`), modèles `VecModel`/`ModelRc`.
-- **Hors périmètre v1** : édition, OCR, compression, annotations, bookmarks/formulaires/a11y, mots de passe/signature, aperçu, récursion des sous-dossiers.
+- **Syntaxe de sélection** (`page_spec`) : grammaire `item`/`plage`/`page` ; espaces ignorés ; crochets englobants tolérés ; `$` = dernière page. Plages ascendantes et **descendantes** (`b-a` donne b..a) volontaires. Numéros hors limites = erreur. Vide = toutes les pages. Messages d'erreur avec position.
+- **Sources** : répertoire non récursif, extension `.pdf` insensible, tri alphabétique naturel (`natord`). Même fichier plusieurs fois avec sélections différentes.
+- **Sortie** : dossier par défaut = dossier de la 1re source ; nom par défaut `fusion_AAAAMMJJ-HHMMSS.pdf` (heure locale) ; `.pdf` ajouté si absent ; refus si la sortie écraserait une source ; écrasement d'un autre fichier → erreur CLI code 4 sauf `--force`.
+- **Orientation** : conservation de `MediaBox`/`CropBox`/`Resources`/`Rotate`, y compris les attributs hérités des parents.
+- **Fusion** : renumérotation des objets ; matériauser attributs hérités ; écriture atomique via fichier temporaire puis `rename`.
+- **CLI** : clap derive, options `-o/-d/-n/-f/--dry-run/-q/-v/--gui`. Codes de sortie 0–4. `--output` mutuellement exclusif avec `--output-dir/--name`.
+- **GUI** : Slint, `rfd` pour les dialogues, thread séparé + `invoke_from_event_loop`, validation de la sélection, français, modèles `VecModel`.
+- **Hors périmètre v1** : édition, OCR, compression, annotations, bookmarks/formulaires, mots de passe/signature, aperçu, récursion des sous-dossiers.
 
 ## Points d'attention techniques clés
 
-- **Attributs hérités** (§7.1) : le cœur de la conservation d'orientation. À couvrir par un test dédié (portrait+paysage, `Rotate` 90/180/270).
-- **$ canonique selon le document** : `$` = dernière page *du document courant*.
+- **Attributs hérités** : cœur de la conservation d'orientation. Couvert par tests dédiés.
 - **Collisions d'objets** : renumérotation obligatoire.
 - **PDF chiffrés/corrompus** : détecter et signaler, jamais de panic.
 - **Output atomique** + chemins canoniques.
@@ -109,4 +122,4 @@ Notes machine : `~/.cargo/bin` **n'est pas dans `PATH`** (voir mémoires). Les b
 cargo fmt --check && cargo clippy -- -D warnings && cargo test
 ```
 
-Le Go/auxiliaire CI n'existe pas encore ; tests d'intégration prévus via `assert_cmd` + `tempfile` dans `tests/`.
+Les tests d'intégration CLI sont disponibles dans `crates/pdfmerge-app/tests/cli.rs` et utilisent `assert_cmd` + `tempfile`.

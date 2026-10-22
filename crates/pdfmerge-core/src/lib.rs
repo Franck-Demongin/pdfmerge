@@ -1,14 +1,13 @@
 mod error;
 mod merge;
-mod output;
 mod page_spec;
 
 pub use crate::error::{MergeError, SourceError, SpecError};
 pub use crate::merge::merge;
 pub use crate::page_spec::PageSpec;
 
+pub mod output;
 pub mod sources;
-pub use crate::output::{default_output_path, ensure_pdf_extension};
 
 /// Entrée source d'une fusion.
 #[derive(Debug, Clone, PartialEq, Eq)]

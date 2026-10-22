@@ -1,0 +1,68 @@
+import { VerticalBox, HorizontalBox, Button, LineEdit, ListView } from "std-widgets.slint";
+
+export struct SourceRow {
+    path: string,
+    page-count: int,
+    pages: string,
+    status: string,
+    status-error: bool,
+}
+
+export component AppWindow inherits Window {
+    title: "PDFMerge";
+    width: 920px;
+    height: 620px;
+
+    in property <[SourceRow]> source_model;
+    in property <string> output_dir_str: "";
+    in property <string> output_name_str: "";
+    in property <string> status_text: "Ajoutez des PDFs.";
+    in property <bool> can_merge: false;
+    in property <int> progress_processed: 0;
+    in property <int> progress_total: 0;
+
+    callback add_files();
+    callback add_directory();
+    callback remove_source(int);
+    callback move_up(int);
+    callback move_down(int);
+    callback pages_edited(int, string);
+    callback output_dir_changed(string);
+    callback output_name_changed(string);
+    callback merge_clicked();
+
+    VerticalBox {
+        HorizontalBox {
+            Button { text: "Ajouter des fichiers…"; clicked => root.add_files(); }
+            Button { text: "Ajouter un dossier…"; clicked => root.add_directory(); }
+        }
+
+        ListView {
+            vertical-stretch: 1;
+            for row[idx] in source_model: HorizontalBox {
+                Button { text: "↑"; width: 28px; clicked => root.move_up(idx); }
+                Button { text: "↓"; width: 28px; clicked => root.move_down(idx); }
+                Button { text: "✕"; width: 28px; clicked => root.remove_source(idx); }
+                Text { text: row.path; horizontal-stretch: 2; }
+                Text { text: row.page-count; width: 60px; horizontal-alignment: center; }
+                LineEdit { text: row.pages; width: 150px; edited => root.pages_edited(idx, self.text); }
+                Text { text: row.status; color: row.status-error ? #d32f2f : #333333; width: 180px; }
+            }
+        }
+
+        HorizontalBox {
+            Text { text: "Dossier de sortie"; width: 180px; }
+            LineEdit { text: root.output_dir_str; horizontal-stretch: 1; edited => root.output_dir_changed(self.text); }
+        }
+        HorizontalBox {
+            Text { text: "Nom du fichier"; width: 180px; }
+            LineEdit { text: root.output_name_str; horizontal-stretch: 1; edited => root.output_name_changed(self.text); }
+        }
+
+        HorizontalBox {
+            Text { text: root.status_text; horizontal-stretch: 1; }
+              Text { text: root.progress_processed + "/" + root.progress_total; width: 80px; }
+            Button { text: "Fusionner"; enabled: root.can_merge; clicked => root.merge_clicked(); }
+        }
+    }
+}
