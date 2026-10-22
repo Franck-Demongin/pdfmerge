@@ -8,6 +8,7 @@ use pdfmerge_core::output;
 use pdfmerge_core::sources;
 use pdfmerge_core::{MergeError, PageSpec, SourceEntry, SpecError};
 use slint::{ComponentHandle, Model, VecModel};
+#[cfg(target_os = "linux")]
 use std::process::{Command, Stdio};
 
 #[derive(Clone)]
