@@ -1,3 +1,4 @@
 /target
 # Qwen Code local settings (personal permissions)
 .qwen/settings.json
+/exemples

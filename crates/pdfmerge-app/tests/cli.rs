@@ -52,7 +52,7 @@ fn make_pdf(path: &Path, pages: &[DirectPage]) -> Result<(), Box<dyn std::error:
 }
 
 fn pdfmerge_command() -> Result<Command, assert_cmd::cargo::CargoError> {
-    Command::cargo_bin("pdfmerge-app")
+    Command::cargo_bin("pdfmerge")
 }
 
 fn page_dimensions(path: &Path) -> Result<Vec<(i64, i64)>, Box<dyn std::error::Error>> {
