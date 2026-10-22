@@ -13,9 +13,9 @@ export component AppWindow inherits Window {
     width: 920px;
     height: 620px;
 
-    in property <[SourceRow]> source_model;
-    in property <string> output_dir_str: "";
-    in property <string> output_name_str: "";
+    in-out property <[SourceRow]> source_model;
+    in-out property <string> output_dir_str: "";
+    in-out property <string> output_name_str: "";
     in property <string> status_text: "Ajoutez des PDFs.";
     in property <bool> can_merge: false;
     in property <int> progress_processed: 0;
@@ -52,11 +52,11 @@ export component AppWindow inherits Window {
 
         HorizontalBox {
             Text { text: "Dossier de sortie"; width: 180px; }
-            LineEdit { text: root.output_dir_str; horizontal-stretch: 1; edited => root.output_dir_changed(self.text); }
+            LineEdit { text <=> root.output_dir_str; horizontal-stretch: 1; edited => root.output_dir_changed(self.text); }
         }
         HorizontalBox {
             Text { text: "Nom du fichier"; width: 180px; }
-            LineEdit { text: root.output_name_str; horizontal-stretch: 1; edited => root.output_name_changed(self.text); }
+            LineEdit { text <=> root.output_name_str; horizontal-stretch: 1; edited => root.output_name_changed(self.text); }
         }
 
         HorizontalBox {

@@ -2,11 +2,12 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use pdfmerge_core::output;
 use pdfmerge_core::sources;
 use pdfmerge_core::{PageSpec, SourceEntry, SpecError};
-use slint::{ComponentHandle, VecModel};
+use slint::{ComponentHandle, Model, VecModel};
 
 #[derive(Clone)]
 struct SourceState {
@@ -141,17 +142,32 @@ pub fn run() {
         let Some(app) = weak_pages.upgrade() else {
             return;
         };
+        let index = index as usize;
+        let typed = value.to_string();
+        let mut updated_row = None;
         {
             let mut lock = state_pages
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let index = index as usize;
             if index < lock.len() {
-                lock[index].spec_input = value.to_string();
+                lock[index].spec_input = typed.clone();
                 validate_source(&mut lock[index]);
+                updated_row = Some(crate::SourceRow {
+                    path: lock[index].path.to_string_lossy().to_string().into(),
+                    page_count: lock[index].page_count as i32,
+                    pages: typed.clone().into(),
+                    status: lock[index].status.clone().into(),
+                    status_error: lock[index].error,
+                });
             }
         }
-        rebuild_ui(&app, &state_pages, &output_pages);
+        let can_merge = compute_can_merge(&state_pages, &output_pages);
+        app.set_can_merge(can_merge);
+        app.set_status_text(status_for_all(&state_pages).into());
+        if let Some(row) = updated_row {
+            let model = app.get_source_model();
+            model.set_row_data(index, row);
+        }
     });
 
     let weak_output_dir = weak.clone();
@@ -274,12 +290,32 @@ pub fn run() {
         let processed_thread = Arc::clone(&progress_processed_merge);
         let total_thread = Arc::clone(&progress_total_merge);
         let weak_thread = weak.clone();
+        let last_publish = Arc::new(Mutex::new(Instant::now()));
         thread::spawn(move || {
             let result = pdfmerge_core::merge(&request, |progress| {
                 let processed = processed_thread.clone();
                 let total = total_thread.clone();
                 processed.store(progress.processed, Ordering::Relaxed);
                 total.store(progress.total, Ordering::Relaxed);
+
+                let should_publish = progress.total == 0
+                    || progress.processed == progress.total
+                    || progress.processed == 0
+                    || {
+                        let mut last = last_publish
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner());
+                        if last.elapsed() >= Duration::from_millis(100) {
+                            *last = Instant::now();
+                            true
+                        } else {
+                            false
+                        }
+                    };
+                if !should_publish {
+                    return;
+                }
+
                 let weak = weak_thread.clone();
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(app) = weak.upgrade() {
@@ -467,16 +503,34 @@ fn validate_source(item: &mut SourceState) {
             }
             Err(error) => {
                 item.spec = Err(error.clone());
-                item.status = format!("Erreur pos. {} : {}", error.position, error.message);
-                item.error = true;
+                if incomplete_selection(&item.spec_input) {
+                    item.status = "Saisie en cours…".to_owned();
+                    item.error = false;
+                } else {
+                    item.status = format!("Erreur pos. {} : {}", error.position, error.message);
+                    item.error = true;
+                }
             }
         },
         Err(error) => {
             item.spec = Err(error.clone());
-            item.status = format!("Erreur pos. {} : {}", error.position, error.message);
-            item.error = true;
+            if incomplete_selection(&item.spec_input) {
+                item.status = "Saisie en cours…".to_owned();
+                item.error = false;
+            } else {
+                item.status = format!("Erreur pos. {} : {}", error.position, error.message);
+                item.error = true;
+            }
         }
     }
+}
+
+fn incomplete_selection(input: &str) -> bool {
+    let trimmed = input.trim();
+    trimmed.is_empty()
+        || trimmed.ends_with('-')
+        || trimmed.ends_with(',')
+        || trimmed.ends_with("..")
 }
 
 fn status_for_all(state: &Arc<Mutex<Vec<SourceState>>>) -> String {
@@ -499,7 +553,7 @@ fn compute_can_merge(
     let lock = state
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if lock.is_empty() || lock.iter().any(|item| item.error) {
+    if lock.is_empty() || lock.iter().any(|item| item.error || item.spec.is_err()) {
         return false;
     }
     drop(lock);
