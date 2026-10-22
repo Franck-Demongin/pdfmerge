@@ -1,0 +1,37 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"          # à adapter
+
+# Versions centralisées : chaque crate les référence avec `xxx.workspace = true`
+[workspace.dependencies]
+pdfmerge-core = { path = "crates/pdfmerge-core" }
+lopdf = "0.36"
+thiserror = "2"
+anyhow = "1"
+natord = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+clap = { version = "4", features = ["derive"] }
+slint = "1"
+slint-build = "1"
+rfd = "0.15"
+tempfile = "3"
+proptest = "1"
+assert_cmd = "2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

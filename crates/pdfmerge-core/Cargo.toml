@@ -1,0 +1,20 @@
+[package]
+name = "pdfmerge-core"
+description = "Moteur de fusion de PDF : sélection de pages, sources, sortie"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+lopdf.workspace = true
+thiserror.workspace = true
+natord.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true
