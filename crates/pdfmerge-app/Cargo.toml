@@ -13,7 +13,7 @@ lopdf.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 slint.workspace = true
-rfd.workspace = true
+rfd = { workspace = true }
 chrono.workspace = true
 
 [build-dependencies]

@@ -1,6 +1,10 @@
-import { VerticalBox, HorizontalBox, Button, LineEdit, ListView } from "std-widgets.slint";
+import { Theme } from "./theme.slint";
+import { ListView } from "std-widgets.slint";
+import { Panel, AppButton, PrimaryButton, IconButton, TextField, Badge, HintText, ProgressBar, StatusBar } from "./components.slint";
 
 export struct SourceRow {
+    name: string,
+    folder: string,
     path: string,
     page-count: int,
     pages: string,
@@ -9,60 +13,366 @@ export struct SourceRow {
 }
 
 export component AppWindow inherits Window {
-    title: "PDFMerge";
-    width: 920px;
-    height: 620px;
+    title: @tr("PDFMerge");
+    preferred-width: 920px;
+    preferred-height: 680px;
+    min-width: 720px;
+    min-height: 520px;
+    background: Theme.bg;
 
-    in-out property <[SourceRow]> source_model;
-    in-out property <string> output_dir_str: "";
-    in-out property <string> output_name_str: "";
-    in property <string> status_text: "Ajoutez des PDFs.";
-    in property <bool> can_merge: false;
-    in property <int> progress_processed: 0;
-    in property <int> progress_total: 0;
+    in-out property <[SourceRow]> source-model;
+    in-out property <string> output-dir-str: "";
+    in-out property <string> output-name-str: "";
 
-    callback add_files();
-    callback add_directory();
-    callback remove_source(int);
-    callback move_up(int);
-    callback move_down(int);
-    callback pages_edited(int, string);
-    callback output_dir_changed(string);
-    callback output_name_changed(string);
-    callback merge_clicked();
+    in property <string> source-panel-title: "Sources - 0 fichier";
+    in property <int> source-count: 0;
 
-    VerticalBox {
-        HorizontalBox {
-            Button { text: "Ajouter des fichiers…"; clicked => root.add_files(); }
-            Button { text: "Ajouter un dossier…"; clicked => root.add_directory(); }
-        }
+    in property <string> summary-text: "Aucune source";
+    in property <string> status-text: "Ajoutez des PDFs.";
+    in property <string> status-level: "neutral";
 
-        ListView {
+    in property <bool> can-merge: false;
+    in property <bool> merging: false;
+    in property <int> progress-processed: 0;
+    in property <int> progress-total: 0;
+    in property <float> progress-ratio: 0.0;
+
+    in property <bool> confirm-open: false;
+    in property <string> confirm-path: "";
+    in property <bool> has-result: false;
+    in property <string> result-path: "";
+
+    callback add-files;
+    callback add-directory;
+    callback remove-source(int);
+    callback move-up(int);
+    callback move-down(int);
+    callback pages-edited(int, string);
+    callback output-dir-changed(string);
+    callback output-name-changed(string);
+    callback merge-clicked;
+    callback duplicate-source(int);
+    callback clear-sources;
+    callback browse-output-directory;
+    callback confirm-overwrite;
+    callback cancel-overwrite;
+    callback open-result-file;
+    callback open-result-directory;
+
+    VerticalLayout {
+        padding: Theme.padding-window;
+        spacing: Theme.gap;
+
+        Panel {
+            title: root.source-panel-title;
             vertical-stretch: 1;
-            for row[idx] in source_model: HorizontalBox {
-                Button { text: "↑"; width: 28px; clicked => root.move_up(idx); }
-                Button { text: "↓"; width: 28px; clicked => root.move_down(idx); }
-                Button { text: "✕"; width: 28px; clicked => root.remove_source(idx); }
-                Text { text: row.path; horizontal-stretch: 2; }
-                Text { text: row.page-count; width: 60px; horizontal-alignment: center; }
-                LineEdit { text: row.pages; width: 150px; edited => root.pages_edited(idx, self.text); }
-                Text { text: row.status; color: row.status-error ? #d32f2f : #333333; width: 180px; }
+
+            HorizontalLayout {
+                spacing: Theme.gap-small;
+
+                AppButton {
+                    text: @tr("Ajouter des fichiers…");
+                    enabled: !root.merging;
+                    clicked => {
+                        root.add-files();
+                    }
+                }
+                AppButton {
+                    text: @tr("Ajouter un dossier…");
+                    enabled: !root.merging;
+                    clicked => {
+                        root.add-directory();
+                    }
+                }
+                AppButton {
+                    text: @tr("Vider");
+                    enabled: !root.merging && root.source-count > 0;
+                    clicked => {
+                        root.clear-sources();
+                    }
+                }
+            }
+
+            if root.source-count == 0: Rectangle {
+                vertical-stretch: 1;
+                min-height: 96px;
+                background: #00000000;
+
+                Text {
+                    text: @tr("Aucun fichier. Ajoutez des PDF ou un dossier pour commencer.");
+                    color: Theme.text-muted;
+                    font-size: Theme.font-size;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+
+            if root.source-count > 0: ListView {
+                vertical-stretch: 1;
+
+                for row[idx] in root.source-model: Rectangle {
+                    width: 100%;
+                    min-height: 74px;
+
+                    VerticalLayout {
+                        padding-left: Theme.gap-small;
+                        padding-right: Theme.gap-small;
+                        padding-top: Theme.gap-small;
+                        padding-bottom: Theme.gap-small;
+                        spacing: Theme.gap-small;
+
+                        HorizontalLayout {
+                            spacing: Theme.gap-small;
+                            vertical-stretch: 1;
+
+                            IconButton {
+                                text: "↑";
+                                enabled: !root.merging && root.source-count > 1 && idx > 0;
+                                clicked => {
+                                    root.move-up(idx);
+                                }
+                            }
+                            IconButton {
+                                text: "↓";
+                                enabled: !root.merging && root.source-count > 1 && idx + 1 < root.source-count;
+                                clicked => {
+                                    root.move-down(idx);
+                                }
+                            }
+                            IconButton {
+                                text: "×";
+                                enabled: !root.merging;
+                                clicked => {
+                                    root.remove-source(idx);
+                                }
+                            }
+                            IconButton {
+                                text: "@";
+                                enabled: !root.merging;
+                                clicked => {
+                                    root.duplicate-source(idx);
+                                }
+                            }
+
+                            VerticalLayout {
+                                horizontal-stretch: 2;
+                                spacing: 2px;
+
+                                Text {
+                                    text: row.name;
+                                    color: Theme.text;
+                                    font-size: Theme.font-size;
+                                    overflow: elide;
+                                }
+                                HintText {
+                                    text: row.folder;
+                                    overflow: elide;
+                                }
+                            }
+
+                            Badge {
+                                text: row.page-count + " p.";
+                            }
+
+                            TextField {
+                                width: 175px;
+                                text: row.pages;
+                                placeholder: @tr("toutes");
+                                error: row.status-error;
+                                edited(value) => {
+                                    root.pages-edited(idx, value);
+                                }
+                                accepted(value) => {
+                                    root.pages-edited(idx, value);
+                                }
+                            }
+
+                            Text {
+                                text: row.status;
+                                color: row.status-error ? Theme.error : Theme.text-muted;
+                                font-size: Theme.font-size-small;
+                                width: 135px;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                }
+            }
+
+            HintText {
+                text: @tr("Syntaxe : 3-6,1,4-$ · $ = dernière page · 6-3 = ordre inversé");
             }
         }
 
-        HorizontalBox {
-            Text { text: "Dossier de sortie"; width: 180px; }
-            LineEdit { text: root.output_dir_str; horizontal-stretch: 1; edited => root.output_dir_changed(self.text); }
-        }
-        HorizontalBox {
-            Text { text: "Nom du fichier"; width: 180px; }
-            LineEdit { text: root.output_name_str; horizontal-stretch: 1; edited => root.output_name_changed(self.text); }
+        Panel {
+            title: @tr("Sortie");
+
+            HorizontalLayout {
+                spacing: Theme.gap-small;
+
+                Text {
+                    text: @tr("Dossier");
+                    color: Theme.text-muted;
+                    font-size: Theme.font-size-small;
+                    width: 70px;
+                    vertical-alignment: center;
+                }
+                TextField {
+                    text <=> root.output-dir-str;
+                    placeholder: @tr("Dossier de sortie");
+                    horizontal-stretch: 1;
+                    edited(value) => {
+                        root.output-dir-changed(value);
+                    }
+                    accepted(value) => {
+                        root.output-dir-changed(value);
+                    }
+                }
+                AppButton {
+                    text: @tr("Parcourir…");
+                    enabled: !root.merging;
+                    clicked => {
+                        root.browse-output-directory();
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: Theme.gap-small;
+
+                Text {
+                    text: @tr("Fichier");
+                    color: Theme.text-muted;
+                    font-size: Theme.font-size-small;
+                    width: 70px;
+                    vertical-alignment: center;
+                }
+                TextField {
+                    text: root.output-name-str;
+                    placeholder: @tr("fusion_20261022-143507");
+                    suffix: ".pdf";
+                    horizontal-stretch: 1;
+                    edited(value) => {
+                        root.output-name-changed(value);
+                    }
+                    accepted(value) => {
+                        root.output-name-changed(value);
+                    }
+                }
+            }
+
+            HintText {
+                text: @tr("La sortie suit le dossier de la première source tant que le champ n'est pas modifié.");
+            }
         }
 
-        HorizontalBox {
-            Text { text: root.status_text; horizontal-stretch: 1; }
-              Text { text: root.progress_processed + "/" + root.progress_total; width: 80px; }
-            Button { text: "Fusionner"; enabled: root.can_merge; clicked => root.merge_clicked(); }
+        Rectangle {
+            background: Theme.panel-border;
+            width: 100%;
+            height: 1px;
+        }
+
+        HorizontalLayout {
+            spacing: Theme.gap-small;
+            alignment: center;
+
+            Text {
+                text: root.summary-text;
+                color: Theme.text-muted;
+                font-size: Theme.font-size-small;
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            if root.merging: ProgressBar {
+                width: 150px;
+                value: root.progress-ratio;
+            }
+
+            if root.merging: Text {
+                text: root.progress-processed + " / " + root.progress-total + " pages";
+                color: Theme.text-muted;
+                font-size: Theme.font-size-small;
+                vertical-alignment: center;
+            }
+
+            if root.has-result: AppButton {
+                text: @tr("Ouvrir le fichier");
+                clicked => {
+                    root.open-result-file();
+                }
+            }
+
+            if root.has-result: AppButton {
+                text: @tr("Ouvrir le dossier");
+                clicked => {
+                    root.open-result-directory();
+                }
+            }
+
+            PrimaryButton {
+                text: @tr("Fusionner");
+                enabled: root.can-merge && !root.merging && !root.confirm-open;
+                clicked => {
+                    root.merge-clicked();
+                }
+            }
+        }
+
+        Text {
+            text: root.status-text;
+            color: root.status-level == "success" ? Theme.success : (root.status-level == "error" ? Theme.error : Theme.text-muted);
+            font-size: Theme.font-size;
+            horizontal-alignment: left;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+
+    if root.confirm-open: Rectangle {
+        x: root.width / 2 - 210px;
+        y: root.height / 2 - 95px;
+        width: 420px;
+
+        Panel {
+
+            VerticalLayout {
+                padding: Theme.padding-panel;
+                spacing: Theme.gap-small;
+
+                Text {
+                    text: @tr("Écraser le fichier ?");
+                    color: Theme.text;
+                    font-size: Theme.font-size-title;
+                    font-weight: 700;
+                }
+                Text {
+                    text: @tr("Le fichier de sortie existe déjà. Écraser ?") + "\n" + root.confirm-path;
+                    color: Theme.text;
+                    font-size: Theme.font-size;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: Theme.gap-small;
+
+                    AppButton {
+                        text: @tr("Annuler");
+                        clicked => {
+                            root.cancel-overwrite();
+                        }
+                    }
+                    PrimaryButton {
+                        text: @tr("Écraser");
+                        clicked => {
+                            root.confirm-overwrite();
+                        }
+                    }
+                }
+            }
         }
     }
 }
