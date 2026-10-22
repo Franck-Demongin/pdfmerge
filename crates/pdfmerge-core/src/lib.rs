@@ -1,14 +1,40 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+mod error;
+mod merge;
+mod output;
+mod page_spec;
+
+pub use crate::error::{MergeError, SourceError, SpecError};
+pub use crate::merge::merge;
+pub use crate::page_spec::PageSpec;
+
+pub mod sources;
+pub use crate::output::{default_output_path, ensure_pdf_extension};
+
+/// Entrée source d'une fusion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceEntry {
+    pub path: std::path::PathBuf,
+    pub spec: PageSpec,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Requête de fusion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MergeRequest {
+    pub sources: Vec<SourceEntry>,
+    pub output: std::path::PathBuf,
+    pub overwrite: bool,
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+/// Résultat d'une fusion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MergeReport {
+    pub output: std::path::PathBuf,
+    pub page_count: usize,
+}
+
+/// Progression d'une fusion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Progress {
+    pub processed: usize,
+    pub total: usize,
 }
