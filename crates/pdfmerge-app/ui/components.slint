@@ -27,6 +27,7 @@ export component Panel inherits Rectangle {
 
 export component AppButton inherits Rectangle {
     in property <string> text;
+    in property <image> icon;
     in property <bool> enabled: true;
     in property <color> text-color: Theme.text;
     in property <int> text-font-weight: 400;
@@ -43,6 +44,20 @@ export component AppButton inherits Rectangle {
         padding-left: Theme.padding-panel;
         padding-right: Theme.padding-panel;
         alignment: center;
+        spacing: root.icon.width > 0 ? Theme.gap-small : 0px;
+
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            width: 16px;
+            height: Theme.control-height;
+            Image {
+                source: root.icon;
+                width: 16px;
+                height: 16px;
+                image-fit: contain;
+                colorize: root.enabled ? root.text-color : Theme.text-muted;
+            }
+        }
 
         Text {
             text: root.text;
@@ -98,6 +113,7 @@ export component PrimaryButton inherits AppButton {
 
 export component IconButton inherits Rectangle {
     in property <string> text;
+    in property <image> icon;
     in property <bool> enabled: true;
     callback clicked;
 
@@ -108,7 +124,17 @@ export component IconButton inherits Rectangle {
     border-width: 1px;
     border-color: Theme.control-border;
 
-    Text {
+    if root.icon.width > 0: Image {
+        source: root.icon;
+        width: 16px;
+        height: 16px;
+        image-fit: contain;
+        colorize: root.enabled ? Theme.text : Theme.text-muted;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    if root.icon.width <= 0: Text {
         text: root.text;
         color: Theme.text;
         font-size: 16px;

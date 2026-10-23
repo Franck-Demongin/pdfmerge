@@ -75,6 +75,7 @@ export component AppWindow inherits Window {
 
                 AppButton {
                     text: @tr("Ajouter des fichiers…");
+                    icon: @image-url("../../../assets/icons/ui/add.svg");
                     enabled: !root.merging;
                     clicked => {
                         root.add-files();
@@ -82,6 +83,7 @@ export component AppWindow inherits Window {
                 }
                 AppButton {
                     text: @tr("Ajouter un dossier…");
+                    icon: @image-url("../../../assets/icons/ui/folder-open.svg");
                     enabled: !root.merging;
                     clicked => {
                         root.add-directory();
@@ -89,6 +91,7 @@ export component AppWindow inherits Window {
                 }
                 AppButton {
                     text: @tr("Vider");
+                    icon: @image-url("../../../assets/icons/ui/delete.svg");
                     enabled: !root.merging && root.source-count > 0;
                     clicked => {
                         root.clear-sources();
@@ -130,28 +133,32 @@ export component AppWindow inherits Window {
                             vertical-stretch: 1;
 
                             IconButton {
-                                text: "↑";
+                                text: "";
+                                icon: @image-url("../../../assets/icons/ui/go-up.svg");
                                 enabled: !root.merging && root.source-count > 1 && idx > 0;
                                 clicked => {
                                     root.move-up(idx);
                                 }
                             }
                             IconButton {
-                                text: "↓";
+                                text: "";
+                                icon: @image-url("../../../assets/icons/ui/go-down.svg");
                                 enabled: !root.merging && root.source-count > 1 && idx + 1 < root.source-count;
                                 clicked => {
                                     root.move-down(idx);
                                 }
                             }
                             IconButton {
-                                text: "×";
+                                text: "";
+                                icon: @image-url("../../../assets/icons/ui/delete.svg");
                                 enabled: !root.merging;
                                 clicked => {
                                     root.remove-source(idx);
                                 }
                             }
                             IconButton {
-                                text: "@";
+                                text: "";
+                                icon: @image-url("../../../assets/icons/ui/duplicate.svg");
                                 enabled: !root.merging;
                                 clicked => {
                                     root.duplicate-source(idx);
@@ -234,6 +241,7 @@ export component AppWindow inherits Window {
                 }
                 AppButton {
                     text: @tr("Parcourir…");
+                    icon: @image-url("../../../assets/icons/ui/folder-open.svg");
                     enabled: !root.merging;
                     clicked => {
                         root.browse-output-directory();
@@ -348,6 +356,7 @@ export component AppWindow inherits Window {
 
             if root.has-result: AppButton {
                 text: @tr("Ouvrir le fichier");
+                icon: @image-url("../../../assets/icons/ui/file-open.svg");
                 clicked => {
                     root.open-result-file();
                 }
@@ -355,6 +364,7 @@ export component AppWindow inherits Window {
 
             if root.has-result: AppButton {
                 text: @tr("Ouvrir le dossier");
+                icon: @image-url("../../../assets/icons/ui/folder-open.svg");
                 clicked => {
                     root.open-result-directory();
                 }
