@@ -33,7 +33,6 @@ export component AppWindow inherits Window {
     in property <string> source-panel-title: "Sources - 0 fichier";
     in property <int> source-count: 0;
 
-    in property <string> summary-text: "Aucune source";
     in property <string> status-text: "Ajoutez des PDFs.";
     in property <string> status-level: "neutral";
 
@@ -385,13 +384,6 @@ export component AppWindow inherits Window {
         HorizontalLayout {
             spacing: Theme.gap-small;
             alignment: center;
-
-            Text {
-                text: root.summary-text;
-                color: Theme.text-muted;
-                font-size: Theme.font-size-small;
-                vertical-alignment: center;
-            }
 
             Rectangle {
                 horizontal-stretch: 1;

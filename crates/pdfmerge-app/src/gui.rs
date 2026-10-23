@@ -54,37 +54,6 @@ fn source_panel_title(source_count: usize) -> String {
     }
 }
 
-fn summary_text_for_all(state: &Arc<Mutex<Vec<SourceState>>>) -> String {
-    let lock = state
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if lock.is_empty() {
-        return "Aucune source".to_owned();
-    }
-    let source_count = lock.len();
-    let page_count: u32 = lock
-        .iter()
-        .filter_map(|item| {
-            item.spec
-                .as_ref()
-                .ok()
-                .and_then(|spec| spec.resolve(item.page_count).ok())
-                .map(|pages| pages.len() as u32)
-        })
-        .sum();
-    if source_count == 1 {
-        format!(
-            "1 source · {page_count} {}",
-            page_word_for(page_count as usize)
-        )
-    } else {
-        format!(
-            "{source_count} sources · {page_count} {}",
-            page_word_for(page_count as usize)
-        )
-    }
-}
-
 fn status_level_for_all(state: &Arc<Mutex<Vec<SourceState>>>) -> String {
     let lock = state
         .lock()
@@ -114,25 +83,10 @@ fn refresh_derived_ui(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let source_count = lock.len();
-    let status = if lock.is_empty() {
-        "Ajoutez au moins un PDF.".to_owned()
-    } else if lock.iter().any(|item| item.error) {
-        "Corrigez les sélections en rouge.".to_owned()
-    } else if source_count == 1 {
-        "1 source prête.".to_owned()
+    let total_pages: u32 = if lock.is_empty() {
+        0
     } else {
-        format!("{source_count} sources prêtes.")
-    };
-    let level = if lock.is_empty() || !lock.iter().any(|item| item.error) {
-        "neutral".to_owned()
-    } else {
-        "error".to_owned()
-    };
-    let summary = if lock.is_empty() {
-        "Aucune source".to_owned()
-    } else {
-        let pages: u32 = lock
-            .iter()
+        lock.iter()
             .filter_map(|item| {
                 item.spec
                     .as_ref()
@@ -140,15 +94,35 @@ fn refresh_derived_ui(
                     .and_then(|spec| spec.resolve(item.page_count).ok())
                     .map(|pages| pages.len() as u32)
             })
-            .sum();
-        if source_count == 1 {
-            format!("1 source · {pages} {}", page_word_for(pages as usize))
-        } else {
-            format!(
-                "{source_count} sources · {pages} {}",
-                page_word_for(pages as usize)
-            )
-        }
+            .sum()
+    };
+    let status = if lock.is_empty() {
+        "Aucune source · Ajoutez au moins un PDF.".to_owned()
+    } else if lock.iter().any(|item| item.error) {
+        format!(
+            "Corrigez les sélections en rouge. · {} sources · {} {}",
+            source_count,
+            total_pages,
+            page_word_for(total_pages as usize)
+        )
+    } else if source_count == 1 {
+        format!(
+            "1 source · {} {} · prête",
+            total_pages,
+            page_word_for(total_pages as usize)
+        )
+    } else {
+        format!(
+            "{} sources · {} {} · prêtes",
+            source_count,
+            total_pages,
+            page_word_for(total_pages as usize)
+        )
+    };
+    let level = if lock.is_empty() || !lock.iter().any(|item| item.error) {
+        "neutral".to_owned()
+    } else {
+        "error".to_owned()
     };
     drop(lock);
     let source_count = source_count as i32;
@@ -161,7 +135,6 @@ fn refresh_derived_ui(
 
     app.set_source_count(source_count);
     app.set_source_panel_title(source_panel_title(source_count as usize).into());
-    app.set_summary_text(summary.into());
     app.set_status_text(status.into());
     app.set_status_level(level.into());
     app.set_output_dir_str(dir.into());
@@ -368,7 +341,6 @@ pub fn run() {
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .len() as i32,
         );
-        app.set_summary_text(summary_text_for_all(&state_pages).into());
         if let Some(row) = updated_row {
             let model = app.get_source_model();
             model.set_row_data(index, row);
@@ -1094,13 +1066,39 @@ fn status_for_all(state: &Arc<Mutex<Vec<SourceState>>>) -> String {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     if lock.is_empty() {
-        "Ajoutez au moins un PDF.".to_owned()
-    } else if lock.iter().any(|item| item.error) {
-        "Corrigez les sélections en rouge.".to_owned()
-    } else if lock.len() == 1 {
-        "1 source prête.".to_owned()
+        return "Aucune source · Ajoutez au moins un PDF.".to_owned();
+    }
+    let source_count = lock.len();
+    let total_pages: u32 = lock
+        .iter()
+        .filter_map(|item| {
+            item.spec
+                .as_ref()
+                .ok()
+                .and_then(|spec| spec.resolve(item.page_count).ok())
+                .map(|pages| pages.len() as u32)
+        })
+        .sum();
+    if lock.iter().any(|item| item.error) {
+        format!(
+            "Corrigez les sélections en rouge. · {} sources · {} {}",
+            source_count,
+            total_pages,
+            page_word_for(total_pages as usize)
+        )
+    } else if source_count == 1 {
+        format!(
+            "1 source · {} {} · prête",
+            total_pages,
+            page_word_for(total_pages as usize)
+        )
     } else {
-        format!("{} sources prêtes.", lock.len())
+        format!(
+            "{} sources · {} {} · prêtes",
+            source_count,
+            total_pages,
+            page_word_for(total_pages as usize)
+        )
     }
 }
 
