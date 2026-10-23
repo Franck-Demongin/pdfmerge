@@ -169,10 +169,10 @@ fn refresh_derived_ui(
 }
 
 pub fn run() {
-    let mut selector = slint::BackendSelector::new().backend_name("winit".into());
     #[cfg(target_os = "linux")]
-    {
-        selector = selector.with_winit_window_attributes_hook(|attributes| {
+    let selector = slint::BackendSelector::new()
+        .backend_name("winit".into())
+        .with_winit_window_attributes_hook(|attributes| {
             match std::env::var("XDG_ACTIVATION_TOKEN")
                 .or_else(|_| std::env::var("DESKTOP_STARTUP_ID"))
             {
@@ -180,7 +180,10 @@ pub fn run() {
                 Err(_) => attributes,
             }
         });
-    }
+
+    #[cfg(not(target_os = "linux"))]
+    let selector = slint::BackendSelector::new().backend_name("winit".into());
+
     let selected = selector.select();
     if let Err(error) = selected {
         eprintln!("sélection du backend Slint impossible : {error}");
