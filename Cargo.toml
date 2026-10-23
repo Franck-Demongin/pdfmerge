@@ -17,6 +17,7 @@ anyhow = "1"
 natord = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 clap = { version = "4", features = ["derive"] }
+opener = "0.9"
 slint = "1"
 slint-build = "1"
 rfd = "0.15"

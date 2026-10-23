@@ -12,8 +12,6 @@ use slint::winit_030::winit::platform::startup_notify::WindowAttributesExtStartu
 #[cfg(target_os = "linux")]
 use slint::winit_030::winit::window::ActivationToken;
 use slint::{ComponentHandle, Model, VecModel};
-#[cfg(target_os = "linux")]
-use std::process::{Command, Stdio};
 
 #[derive(Clone)]
 struct SourceState {
@@ -102,22 +100,8 @@ fn page_word_for(count: usize) -> &'static str {
 }
 
 fn open_location(location: &PathBuf) -> Result<(), String> {
-    #[cfg(target_os = "linux")]
-    {
-        let mut command = Command::new("xdg-open");
-        command.arg(location);
-        command.stdout(Stdio::null()).stderr(Stdio::null());
-        let child = command
-            .spawn()
-            .map_err(|error| format!("Ouverture non prise en charge sur ce système : {error}"))?;
-        drop(child);
-        Ok(())
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = location;
-        Err("Ouverture non prise en charge sur ce système.".to_owned())
-    }
+    opener::open(location)
+        .map_err(|error| format!("Impossible d'ouvrir le fichier ou le dossier : {error}"))
 }
 
 fn refresh_derived_ui(
