@@ -3852,7 +3852,7 @@ checksum = "35fb2e5f958ec131621fdd531e9fc186ed768cbe395337403ae56c17a74c68ec"
 
 [[package]]
 name = "pdfmerge-app"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -3870,7 +3870,7 @@ dependencies = [
 
 [[package]]
 name = "pdfmerge-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
  "lopdf",
