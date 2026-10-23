@@ -116,6 +116,13 @@ Notes machine : `~/.cargo/bin` **n'est pas dans `PATH`**. Environnement de déve
 - **Output atomique** + chemins canoniques.
 - **Unicode/espaces/accents/très longs chemins et extensions `.PDF`/`.Pdf`**.
 
+## Processus de release
+
+- Avant de tagger/pousser une release : exécuter localement `cargo fmt --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, puis le build release Linux `cargo build --release -p pdfmerge-app --bin pdfmerge`.
+- Le cross-build Windows local dépend de `x86_64-w64-mingw32-dlltool`. Si cet outil manque sur la machine, ne pas improviser d'installation locale ni bloquer la release : conserver les vérifications Linux puis déléguer l'étape Windows à GitHub Actions.
+- Une fois les points critiques verts côté Linux, commiter la préparation, créer le tag `vX.Y.Z` et pousser la branche avec le tag. La CI/le workflow Release reste l'autorité pour `pdfmerge.exe` Windows et l'embarquement des icônes.
+- Ne pas attendre ni poller l'exécution CI en boucle indéfiniment : déclencher le pipeline, informer l'utilisateur et laisser GitHub_actions produire les artefacts.
+
 ## Vérification locale recommandée avant commit
 
 ```bash
