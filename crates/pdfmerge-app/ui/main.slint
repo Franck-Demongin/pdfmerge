@@ -437,41 +437,65 @@ export component AppWindow inherits Window {
     }
 
     if root.confirm-open: Rectangle {
-        x: root.width / 2 - 210px;
-        y: root.height / 2 - 95px;
-        width: 420px;
+        width: 100%;
+        height: 100%;
+        background: #00000080;
 
-        Panel {
+        VerticalLayout {
+            alignment: center;
+            spacing: 0;
 
-            VerticalLayout {
-                padding: Theme.padding-panel;
-                spacing: Theme.gap-small;
+            HorizontalLayout {
+                alignment: center;
 
-                Text {
-                    text: @tr("Écraser le fichier ?");
-                    color: Theme.text;
-                    font-size: Theme.font-size-title;
-                    font-weight: 700;
-                }
-                Text {
-                    text: @tr("Le fichier de sortie existe déjà. Écraser ?") + "\n" + root.confirm-path;
-                    color: Theme.text;
-                    font-size: Theme.font-size;
-                    wrap: word-wrap;
-                }
-                HorizontalLayout {
-                    spacing: Theme.gap-small;
+                Rectangle {
+                    width: 420px;
+                    border-radius: Theme.radius-panel;
+                    background: Theme.panel;
+                    border-width: 1px;
+                    border-color: Theme.panel-border;
 
-                    AppButton {
-                        text: @tr("Annuler");
-                        clicked => {
-                            root.cancel-overwrite();
+                    VerticalLayout {
+                        padding: 16px;
+                        spacing: 10px;
+
+                        Text {
+                            text: @tr("Écraser le fichier ?");
+                            color: Theme.text;
+                            font-size: Theme.font-size-title;
+                            font-weight: 700;
                         }
-                    }
-                    PrimaryButton {
-                        text: @tr("Écraser");
-                        clicked => {
-                            root.confirm-overwrite();
+
+                        Text {
+                            text: @tr("Le fichier de sortie existe déjà. Écraser ?");
+                            color: Theme.text;
+                            font-size: Theme.font-size;
+                            wrap: word-wrap;
+                        }
+
+                        Text {
+                            text: root.confirm-path;
+                            color: Theme.text-muted;
+                            font-size: Theme.font-size-small;
+                            wrap: char-wrap;
+                            overflow: elide;
+                        }
+
+                        HorizontalLayout {
+                            spacing: Theme.gap-small;
+
+                            AppButton {
+                                text: @tr("Annuler");
+                                clicked => {
+                                    root.cancel-overwrite();
+                                }
+                            }
+                            PrimaryButton {
+                                text: @tr("Écraser");
+                                clicked => {
+                                    root.confirm-overwrite();
+                                }
+                            }
                         }
                     }
                 }
