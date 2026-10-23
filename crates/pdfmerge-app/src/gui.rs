@@ -29,6 +29,7 @@ struct OutputState {
     name: String,
     dir_modified: bool,
     name_modified: bool,
+    timestamp: bool,
 }
 
 fn source_name(path: &std::path::Path) -> String {
@@ -206,6 +207,7 @@ pub fn run() {
         name: "fusion".to_owned(),
         dir_modified: false,
         name_modified: false,
+        timestamp: false,
     }));
     let result_output = Arc::new(Mutex::new(None::<PathBuf>));
     let result_output_for_page = Arc::clone(&result_output);
@@ -408,6 +410,28 @@ pub fn run() {
         }
     });
 
+    let weak_timestamp = weak.clone();
+    let output_timestamp_state = Arc::clone(&output_state);
+    let state_timestamp = Arc::clone(&state);
+    let result_output_for_timestamp = Arc::clone(&result_output);
+    app.on_output_timestamp_changed(move |checked| {
+        if let Some(app) = weak_timestamp.upgrade() {
+            {
+                let mut guard = output_timestamp_state
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                guard.timestamp = checked;
+            }
+            app.set_output_timestamp(checked);
+            app.set_has_result(false);
+            app.set_result_path("".into());
+            if let Ok(mut guard) = result_output_for_timestamp.lock() {
+                *guard = None;
+            }
+            refresh_derived_ui(&app, &state_timestamp, &output_timestamp_state);
+        }
+    });
+
     let weak_merge = weak.clone();
     let state_merge = Arc::clone(&state);
     let output_merge = Arc::clone(&output_state);
@@ -444,20 +468,29 @@ pub fn run() {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             guard.dir.clone()
         };
-        let (output_name_input, output_name_modified) = {
+        let (output_name_input, output_name_modified, output_timestamp) = {
             let guard = output_merge
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            (guard.name.clone(), guard.name_modified)
+            (guard.name.clone(), guard.name_modified, guard.timestamp)
         };
-        let output_path = output::resolve_output_path(
-            &snapshot[0].path,
-            Some(std::path::Path::new(&output_dir_input)),
+        let output_name_arg = if output_timestamp {
             if output_name_modified && !output_name_input.trim().is_empty() {
                 Some(output_name_input.as_str())
             } else {
                 None
-            },
+            }
+        } else {
+            if !output_name_input.trim().is_empty() {
+                Some(output_name_input.as_str())
+            } else {
+                Some("fusion")
+            }
+        };
+        let output_path = output::resolve_output_path(
+            &snapshot[0].path,
+            Some(std::path::Path::new(&output_dir_input)),
+            output_name_arg,
         );
 
         let source_paths: Vec<PathBuf> = snapshot.iter().map(|item| item.path.clone()).collect();
@@ -687,21 +720,27 @@ fn start_merge(
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         guard.dir.clone()
     };
-    let (output_name_value, output_name_modified) = {
+    let (output_name_value, output_name_modified, output_timestamp) = {
         let guard = output_state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        (guard.name.clone(), guard.name_modified)
+        (guard.name.clone(), guard.name_modified, guard.timestamp)
     };
     let output_dir = if output_dir_value.trim().is_empty() {
         None
     } else {
         Some(PathBuf::from(output_dir_value))
     };
-    let requested_output_name = if output_name_modified && !output_name_value.trim().is_empty() {
+    let requested_output_name = if output_timestamp {
+        if output_name_modified && !output_name_value.trim().is_empty() {
+            Some(output_name_value)
+        } else {
+            None
+        }
+    } else if !output_name_value.trim().is_empty() {
         Some(output_name_value)
     } else {
-        None
+        Some("fusion".to_owned())
     };
     let output_path = output::resolve_output_path(
         &snapshot[0].path,

@@ -24,6 +24,7 @@ export component AppWindow inherits Window {
     in-out property <[SourceRow]> source-model;
     in-out property <string> output-dir-str: "";
     in-out property <string> output-name-str: "";
+    in-out property <bool> output-timestamp: false;
 
     in property <string> source-panel-title: "Sources - 0 fichier";
     in property <int> source-count: 0;
@@ -51,6 +52,7 @@ export component AppWindow inherits Window {
     callback pages-edited(int, string);
     callback output-dir-changed(string);
     callback output-name-changed(string);
+    callback output-timestamp-changed(bool);
     callback merge-clicked;
     callback duplicate-source(int);
     callback clear-sources;
@@ -260,6 +262,49 @@ export component AppWindow inherits Window {
                     accepted(value) => {
                         root.output-name-changed(value);
                     }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: Theme.gap-small;
+
+                Text {
+                    width: 70px;
+                    vertical-alignment: center;
+                }
+
+                Rectangle {
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 4px;
+                    background: Theme.control;
+                    border-width: 1px;
+                    border-color: Theme.control-border;
+
+                    Text {
+                        text: root.output-timestamp ? "✓" : "";
+                        color: Theme.text;
+                        font-size: Theme.font-size;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    touch-area := TouchArea {
+                        enabled: !root.merging;
+                        mouse-cursor: root.merging ? default : pointer;
+                        clicked => {
+                            if (!root.merging) {
+                                root.output-timestamp-changed(!root.output-timestamp);
+                            }
+                        }
+                    }
+                }
+
+                Text {
+                    text: @tr("Horodater le fichier");
+                    color: Theme.text;
+                    font-size: Theme.font-size-small;
+                    vertical-alignment: center;
                 }
             }
 
