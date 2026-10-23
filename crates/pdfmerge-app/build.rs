@@ -10,7 +10,9 @@ fn main() {
     #[cfg(windows)]
     {
         let mut resources = winres::WindowsResource::new();
-        resources.set_icon("../../../assets/icons/pdfmerge.ico");
+        let icon = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/icons/pdfmerge.ico");
+        resources.set_icon(icon.to_string_lossy().as_ref().to_string());
         resources
             .compile()
             .expect("compilation des resources Windows");
