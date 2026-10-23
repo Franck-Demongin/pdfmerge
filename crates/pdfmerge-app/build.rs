@@ -12,7 +12,7 @@ fn main() {
         let mut resources = winres::WindowsResource::new();
         let icon = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../assets/icons/pdfmerge.ico");
-        resources.set_icon(icon.to_string_lossy().as_ref().to_string());
+        resources.set_icon(icon.to_string_lossy().as_ref());
         resources
             .compile()
             .expect("compilation des resources Windows");
