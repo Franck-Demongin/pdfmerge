@@ -25,6 +25,10 @@ export component AppWindow inherits Window {
     in-out property <string> output-dir-str: "";
     in-out property <string> output-name-str: "";
     in-out property <bool> output-timestamp: false;
+    in-out property <bool> drag-active: false;
+    in-out property <int> dragged-source-index: -1;
+    in-out property <int> drag-target-index: -1;
+    in-out property <length> drag-row-stride: 74px;
 
     in property <string> source-panel-title: "Sources - 0 fichier";
     in property <int> source-count: 0;
@@ -53,6 +57,7 @@ export component AppWindow inherits Window {
     callback output-dir-changed(string);
     callback output-name-changed(string);
     callback output-timestamp-changed(bool);
+    callback move-source(int, int);
     callback merge-clicked;
     callback duplicate-source(int);
     callback clear-sources;
@@ -120,6 +125,10 @@ export component AppWindow inherits Window {
                 for row[idx] in root.source-model: Rectangle {
                     width: 100%;
                     min-height: 74px;
+                    opacity: root.drag-active && root.dragged-source-index == idx ? 0.45 : 1.0;
+                    background: root.drag-active && root.drag-target-index == idx ? Theme.control-hover : #00000000;
+                    border-width: root.drag-active && root.drag-target-index == idx ? 1px : 0px;
+                    border-color: root.drag-active && root.drag-target-index == idx ? Theme.accent : #00000000;
 
                     VerticalLayout {
                         padding-left: Theme.gap-small;
@@ -131,6 +140,52 @@ export component AppWindow inherits Window {
                         HorizontalLayout {
                             spacing: Theme.gap-small;
                             vertical-stretch: 1;
+
+                            Rectangle {
+                                width: 28px;
+                                height: 28px;
+                                background: Theme.control;
+                                border-radius: Theme.radius-control;
+                                border-width: 1px;
+                                border-color: Theme.control-border;
+
+                                Text {
+                                    text: "≡";
+                                    color: Theme.text;
+                                    font-size: 18px;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                drag-touch := TouchArea {
+                                    enabled: !root.merging;
+                                    mouse-cursor: move;
+
+                                    moved => {
+                                        if (!root.drag-active) {
+                                            root.dragged-source-index = idx;
+                                            root.drag-target-index = idx;
+                                            root.drag-active = true;
+                                        }
+
+                                        root.drag-target-index = max(0, min(
+                                            root.source-count - 1,
+                                            root.dragged-source-index + round((self.mouse-y - self.pressed-y) / root.drag-row-stride)
+                                        ));
+                                    }
+
+                                    pointer-event(event) => {
+                                        if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
+                                            if (root.drag-active && root.dragged-source-index >= 0) {
+                                                root.move-source(root.dragged-source-index, root.drag-target-index);
+                                            }
+                                            root.drag-active = false;
+                                            root.dragged-source-index = -1;
+                                            root.drag-target-index = -1;
+                                        }
+                                    }
+                                }
+                            }
 
                             IconButton {
                                 text: "";

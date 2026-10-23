@@ -308,6 +308,28 @@ pub fn run() {
         rebuild_ui(&app, &state_down, &output_down);
     });
 
+    let weak_move = weak.clone();
+    let state_move = Arc::clone(&state);
+    let output_move = Arc::clone(&output_state);
+    app.on_move_source(move |from, to| {
+        let Some(app) = weak_move.upgrade() else {
+            return;
+        };
+        let from = from as usize;
+        let to = to as usize;
+        {
+            let mut lock = state_move
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if !lock.is_empty() && from < lock.len() && from != to {
+                let entry = lock.remove(from);
+                let target = to.min(lock.len());
+                lock.insert(target, entry);
+            }
+        }
+        rebuild_ui(&app, &state_move, &output_move);
+    });
+
     let weak_pages = weak.clone();
     let state_pages = Arc::clone(&state);
     let output_pages = Arc::clone(&output_state);
