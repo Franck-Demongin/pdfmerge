@@ -7,6 +7,10 @@ use std::time::{Duration, Instant};
 use pdfmerge_core::output;
 use pdfmerge_core::sources;
 use pdfmerge_core::{MergeError, PageSpec, SourceEntry, SpecError};
+#[cfg(target_os = "linux")]
+use slint::winit_030::winit::platform::startup_notify::WindowAttributesExtStartupNotify;
+#[cfg(target_os = "linux")]
+use slint::winit_030::winit::window::ActivationToken;
 use slint::{ComponentHandle, Model, VecModel};
 #[cfg(target_os = "linux")]
 use std::process::{Command, Stdio};
@@ -181,12 +185,31 @@ fn refresh_derived_ui(
 }
 
 pub fn run() {
+    let mut selector = slint::BackendSelector::new().backend_name("winit".into());
+    #[cfg(target_os = "linux")]
+    {
+        selector = selector.with_winit_window_attributes_hook(|attributes| {
+            match std::env::var("XDG_ACTIVATION_TOKEN")
+                .or_else(|_| std::env::var("DESKTOP_STARTUP_ID"))
+            {
+                Ok(token) => attributes.with_activation_token(ActivationToken::from_raw(token)),
+                Err(_) => attributes,
+            }
+        });
+    }
+    let selected = selector.select();
+    if let Err(error) = selected {
+        eprintln!("sélection du backend Slint impossible : {error}");
+    }
+
+    if let Err(error) = slint::set_xdg_app_id("io.github.Franck-Demongin.PDFMerge") {
+        eprintln!("set_xdg_app_id a échoué : {error}");
+    }
+
     let Ok(app) = crate::AppWindow::new() else {
         eprintln!("impossible de créer l'interface PDFMerge");
         return;
     };
-
-    let _ = slint::set_xdg_app_id("io.github.Franck-Demongin.PDFMerge");
 
     let app_weak = app.as_weak();
     let weak = app_weak.clone();

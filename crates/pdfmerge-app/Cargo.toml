@@ -12,7 +12,7 @@ pdfmerge-core.workspace = true
 lopdf.workspace = true
 anyhow.workspace = true
 clap.workspace = true
-slint.workspace = true
+slint = { workspace = true, features = ["unstable-winit-030"] }
 rfd = { workspace = true }
 chrono.workspace = true
 
