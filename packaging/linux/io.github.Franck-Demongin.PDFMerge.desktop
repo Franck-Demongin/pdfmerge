@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=PDFMerge
+GenericName=PDF page merger
+Comment=Fusion de PDF avec sélection et réorganisation de pages
+Exec=pdfmerge %F
+Icon=pdfmerge
+Terminal=false
+TryExec=pdfmerge
+Categories=Office;
+Keywords=pdf;merge;fusion;pages;
+MimeType=application/pdf;
+StartupNotify=true
+StartupWMClass=io.github.Franck-Demongin.PDFMerge

@@ -186,6 +186,8 @@ pub fn run() {
         return;
     };
 
+    let _ = slint::set_xdg_app_id("io.github.Franck-Demongin.PDFMerge");
+
     let app_weak = app.as_weak();
     let weak = app_weak.clone();
     let state = Arc::new(Mutex::new(Vec::<SourceState>::new()));
