@@ -243,44 +243,6 @@ pub fn run() {
         rebuild_ui(&app, &state_remove, &output_remove);
     });
 
-    let weak_up = weak.clone();
-    let state_up = Arc::clone(&state);
-    let output_up = Arc::clone(&output_state);
-    app.on_move_up(move |index| {
-        let Some(app) = weak_up.upgrade() else {
-            return;
-        };
-        let index = index as usize;
-        {
-            let mut lock = state_up
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            if index > 0 && index < lock.len() {
-                lock.swap(index, index - 1);
-            }
-        }
-        rebuild_ui(&app, &state_up, &output_up);
-    });
-
-    let weak_down = weak.clone();
-    let state_down = Arc::clone(&state);
-    let output_down = Arc::clone(&output_state);
-    app.on_move_down(move |index| {
-        let Some(app) = weak_down.upgrade() else {
-            return;
-        };
-        let index = index as usize;
-        {
-            let mut lock = state_down
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            if index + 1 < lock.len() {
-                lock.swap(index, index + 1);
-            }
-        }
-        rebuild_ui(&app, &state_down, &output_down);
-    });
-
     let weak_move = weak.clone();
     let state_move = Arc::clone(&state);
     let output_move = Arc::clone(&output_state);

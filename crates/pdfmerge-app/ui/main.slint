@@ -50,8 +50,6 @@ export component AppWindow inherits Window {
     callback add-files;
     callback add-directory;
     callback remove-source(int);
-    callback move-up(int);
-    callback move-down(int);
     callback pages-edited(int, string);
     callback output-dir-changed(string);
     callback output-name-changed(string);
@@ -186,22 +184,6 @@ export component AppWindow inherits Window {
                                 }
                             }
 
-                            IconButton {
-                                text: "";
-                                icon: @image-url("../../../assets/icons/ui/go-up.svg");
-                                enabled: !root.merging && root.source-count > 1 && idx > 0;
-                                clicked => {
-                                    root.move-up(idx);
-                                }
-                            }
-                            IconButton {
-                                text: "";
-                                icon: @image-url("../../../assets/icons/ui/go-down.svg");
-                                enabled: !root.merging && root.source-count > 1 && idx + 1 < root.source-count;
-                                clicked => {
-                                    root.move-down(idx);
-                                }
-                            }
                             IconButton {
                                 text: "";
                                 icon: @image-url("../../../assets/icons/ui/delete.svg");
